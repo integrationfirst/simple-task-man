@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "taskman": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["-m", "taskman", "mcp"],
+      "env": {
+        "PYTHONPATH": "/mnt/c/apps/rd/simple-task-man",
+        "TASKMAN_HOME": "/mnt/c/apps/rd/simple-task-man/data"
+      }
+    }
+  }
+}

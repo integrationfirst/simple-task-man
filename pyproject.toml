@@ -1,0 +1,16 @@
+[project]
+name = "simple-task-man"
+version = "0.1.0"
+description = "Personal task manager you talk to in the terminal, powered by a Claude agent."
+requires-python = ">=3.10"
+dependencies = ["anthropic"]
+
+[project.scripts]
+taskman = "taskman.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["taskman"]
