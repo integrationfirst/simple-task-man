@@ -44,6 +44,7 @@ taskman              # chat (same as `taskman chat`)
 taskman list [-a]    # print open tasks (-a includes done) — no AI
 taskman report [--week 2026-11-13] [--theme auto|light|dark]   # write/overwrite this week's report — no AI, rule-based notes
 taskman mcp          # run the MCP server on stdio (Claude Code does this for you)
+taskman serve [--port 8765]   # local report UI on http://127.0.0.1 only
 ```
 
 `--theme` sets the HTML report's colours: `auto` (the default) follows the system light/dark setting; `light` and
@@ -59,6 +60,21 @@ Things to say in chat:
 - `delete the test task` (you are asked to confirm in the terminal)
 - `write this week's report` (one report per week: Tasks table, Executive Notes, Challenges; re-running overwrites it)
 
+## Local report UI
+
+```bash
+python3 -m taskman serve [--port N]   # default port 8765; open the URL it prints
+```
+
+A small page to browse the weekly reports, rebuild one with the rule-based notes ("Regenerate"), or tell Claude
+what to change ("Ask Claude"). It listens on 127.0.0.1 only and rejects requests from other sites.
+
+- Viewing and rule-based regenerate work without Claude.
+- "Ask Claude" runs Claude Code (`claude -p`), so Claude Code must be installed and signed in. Claude can only use
+  the taskman tools, on the same `TASKMAN_HOME` the server uses, and cannot delete tasks or challenges. It finishes
+  by rewriting the selected week's report.
+- One Claude request runs at a time; a second one is refused until the first finishes (5-minute limit).
+
 ## Files
 
 | Path | What |
@@ -71,6 +87,7 @@ Things to say in chat:
 | `taskman/mcp_server.py` | Stdlib MCP server exposing the same tools (option A) |
 | `.mcp.json` | Registers the MCP server with Claude Code for this folder |
 | `taskman/report.py` | Markdown/HTML report rendering |
+| `taskman/web.py` | Local report UI (`taskman serve`) |
 | `taskman/cli.py` | Terminal commands |
 
 ## Settings
