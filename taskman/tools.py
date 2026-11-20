@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Callable
 
-from .report import write_report
+from .report import THEMES, write_report
 from .store import PRIORITIES, STATUSES, TaskStore
 
 WRITING_RULES = """Business writing for task notes and challenges:
@@ -236,6 +236,9 @@ TOOLS: list[dict] = [
                         "required": ["task_id", "phrases"],
                     },
                 },
+                "theme": {"type": "string", "enum": list(THEMES),
+                          "description": "Colour theme of the HTML file only (the Markdown is unchanged). "
+                                         "Default auto: follow the reader's system light/dark setting."},
             },
         },
     },
@@ -322,10 +325,10 @@ class ToolExecutor:
 
     # ---- report ------------------------------------------------------
     def _generate_weekly_report(self, week_of: str | None = None, summary: str | None = None,
-                                note_highlights: list[dict] | None = None):
+                                note_highlights: list[dict] | None = None, theme: str = "auto"):
         day = date.fromisoformat(week_of) if week_of else date.today()
         highlights: dict[int, list[str]] = {}
         for item in note_highlights or []:
             highlights.setdefault(int(item["task_id"]), []).extend(item.get("phrases") or [])
-        md, html, replaced = write_report(self.store, self.reports_dir, day, summary, highlights)
+        md, html, replaced = write_report(self.store, self.reports_dir, day, summary, highlights, theme)
         return {"markdown": str(md), "html": str(html), "replaced_existing_report": replaced}

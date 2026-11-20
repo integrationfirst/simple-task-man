@@ -8,7 +8,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from .report import write_report
+from .report import THEMES, write_report
 from .store import TaskStore
 from .tools import ToolExecutor
 
@@ -82,7 +82,7 @@ def cmd_list(args) -> int:
 
 def cmd_report(args) -> int:
     week_of = date.fromisoformat(args.week) if args.week else None
-    md, html, replaced = write_report(_store(), DATA_DIR / "reports", week_of)
+    md, html, replaced = write_report(_store(), DATA_DIR / "reports", week_of, theme=args.theme)
     verb = "Updated" if replaced else "Wrote"
     print(f"{verb} {md}\n{verb} {html}")
     return 0
@@ -105,6 +105,8 @@ def main(argv: list[str] | None = None) -> int:
     lp.set_defaults(func=cmd_list)
     rp = sub.add_parser("report", help="Write/overwrite this week's report (no AI; rule-based notes).")
     rp.add_argument("--week", help="Any date in the target week, YYYY-MM-DD (default: this week).")
+    rp.add_argument("--theme", choices=THEMES, default="auto",
+                    help="HTML colour theme: auto (follow the system setting, default), light or dark.")
     rp.set_defaults(func=cmd_report)
     sub.add_parser("mcp", help="Run as an MCP server over stdio (for Claude Code).").set_defaults(func=cmd_mcp)
     args = p.parse_args(argv)
