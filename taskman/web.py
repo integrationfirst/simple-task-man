@@ -240,27 +240,35 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>taskman reports</title>
 <style>
-:root{color-scheme:light dark;--fg:#1f2937;--muted:#6b7280;--bg:#f4f5f7;--line:#e5e7eb;--err:#b42318;--acc:#1e3a5f}
-@media (prefers-color-scheme:dark){:root{--fg:#f3f4f6;--muted:#9ca3af;--bg:#111827;--line:#374151;--err:#ff7b72;--acc:#93c5fd}}
+:root{color-scheme:light dark;--fg:#1f2937;--muted:#6b7280;--bg:#f4f5f7;--line:#e5e7eb;--err:#b42318;--acc:#1e3a5f;
+  --head-bg:#e6eef8;--acc-fg:#ffffff;--acc-hover:#2b5285;--acc-active:#142a47;--panel:#eef2f7;--info:#1e40af;--err-bg:#fdecec;--ok-bg:#e8f5ec}
+@media (prefers-color-scheme:dark){:root{--fg:#f3f4f6;--muted:#9ca3af;--bg:#111827;--line:#374151;--err:#ff7b72;--acc:#93c5fd;
+  --head-bg:#1a2b45;--acc-fg:#111827;--acc-hover:#bfdbfe;--acc-active:#60a5fa;--panel:#172033;--info:#93c5fd;--err-bg:#3f1d1d;--ok-bg:#132a1f}}
 *{box-sizing:border-box}
 body{margin:0;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--fg);background:var(--bg);
   display:flex;flex-direction:column;height:100vh}
-header{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;padding:.75rem 1rem;border-bottom:1px solid var(--line)}
+header{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;padding:.75rem 1rem;background:var(--head-bg);border-bottom:2px solid var(--acc)}
 header h1{font-size:1.05rem;margin:0 1rem 0 0}
 select,button,textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.35rem .6rem}
 button{cursor:pointer}
+header select,header button{border-color:var(--muted)}
 button:disabled,textarea:disabled{opacity:.55;cursor:default}
 :focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+#send,#gen{background:var(--acc);color:var(--acc-fg);border-color:var(--acc)}
+#send:not(:disabled):hover,#gen:not(:disabled):hover{background:var(--acc-hover);border-color:var(--acc-hover)}
+#send:not(:disabled):active,#gen:not(:disabled):active{background:var(--acc-active);border-color:var(--acc-active)}
+#regen:not(:disabled):hover{border-color:var(--acc)}
+#week:not(:disabled):hover,#week:focus,#instruction:not(:disabled):hover,#instruction:focus{border-color:var(--acc)}
 main{flex:1;display:flex;min-height:0}
 #view{flex:1;display:flex;min-width:0}
 iframe{flex:1;border:0;width:100%}
 #empty{margin:2rem auto;text-align:center}
-aside{width:22rem;max-width:40vw;border-left:1px solid var(--line);padding:1rem;display:flex;flex-direction:column;gap:.6rem;overflow:auto}
+aside{width:22rem;max-width:40vw;background:var(--panel);border-left:1px solid var(--line);padding:1rem;display:flex;flex-direction:column;gap:.6rem;overflow:auto}
 aside h2{font-size:1rem;margin:0}
 textarea{width:100%;min-height:8rem;resize:vertical}
-#status{color:var(--muted)}
-#error{color:var(--err);white-space:pre-wrap}
-#output{white-space:pre-wrap;border-top:1px solid var(--line);padding-top:.5rem}
+#status{color:var(--info)}
+#error{color:var(--err);background:var(--err-bg);padding:.4rem .6rem;border-radius:6px;white-space:pre-wrap}
+#output{white-space:pre-wrap;background:var(--ok-bg);border-top:1px solid var(--line);padding:.5rem .6rem;border-radius:6px}
 [hidden]{display:none!important}
 @media (max-width:600px){
   main{flex-direction:column}
