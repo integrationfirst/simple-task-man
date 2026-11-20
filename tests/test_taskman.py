@@ -101,7 +101,7 @@ class ChallengeTests(Base):
 
     def test_report_uses_saved_challenges(self):
         today = date(2026, 11, 13)
-        self.store.add_challenge("Budget approval pending.")
+        self.store.add_challenge("Budget approval pending.").created_at = "2026-11-10T09:00:00"
         old = self.store.add_challenge("Old issue.")
         self.store.update_challenge(old.id, status="RESOLVED")
         old.created_at, old.resolved_at = "2026-11-02T09:00:00", "2026-11-12T09:00:00"
@@ -118,7 +118,7 @@ class ChallengeTests(Base):
 
     def test_challenge_shows_linked_task_number(self):
         self.store.add("Integrate APIs")
-        self.store.add_challenge("Vendor scope unclear.", task_id=1)
+        self.store.add_challenge("Vendor scope unclear.", task_id=1).created_at = "2026-11-10T09:00:00"
         md, _, _ = write_report(self.store, self.tmp / "r", date(2026, 11, 13))
         self.assertIn("- Vendor scope unclear. (#1)", md.read_text())
 
