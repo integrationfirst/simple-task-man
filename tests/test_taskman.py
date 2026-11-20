@@ -4,7 +4,9 @@ import unittest
 from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace as NS
+from unittest import mock
 
+from taskman import cli
 from taskman.agent import TaskAgent
 from taskman.report import collect, default_summary, write_report
 from taskman.store import TaskStore
@@ -101,7 +103,7 @@ class ChallengeTests(Base):
 
     def test_report_uses_saved_challenges(self):
         today = date(2026, 11, 13)
-        self.store.add_challenge("Budget approval pending.")
+        self.store.add_challenge("Budget approval pending.").created_at = "2026-11-10T09:00:00"
         old = self.store.add_challenge("Old issue.")
         self.store.update_challenge(old.id, status="RESOLVED")
         old.created_at, old.resolved_at = "2026-11-02T09:00:00", "2026-11-12T09:00:00"
@@ -118,7 +120,7 @@ class ChallengeTests(Base):
 
     def test_challenge_shows_linked_task_number(self):
         self.store.add("Integrate APIs")
-        self.store.add_challenge("Vendor scope unclear.", task_id=1)
+        self.store.add_challenge("Vendor scope unclear.", task_id=1).created_at = "2026-11-10T09:00:00"
         md, _, _ = write_report(self.store, self.tmp / "r", date(2026, 11, 13))
         self.assertIn("- Vendor scope unclear. (#1)", md.read_text())
 
@@ -163,6 +165,16 @@ class ToolTests(Base):
         ex = ToolExecutor(self.store, self.tmp)
         for tool in TOOLS:
             self.assertTrue(hasattr(ex, f"_{tool['name']}"), tool["name"])
+
+    def test_report_theme(self):
+        ex = ToolExecutor(self.store, self.tmp / "r")
+        out, err = ex.run("generate_weekly_report", {"theme": "neon"})
+        self.assertTrue(err)
+        self.assertIn("Unknown theme", out)
+        self.assertFalse((self.tmp / "r").exists())
+        out, err = ex.run("generate_weekly_report", {"theme": "dark"})
+        self.assertFalse(err)
+        self.assertIn("--bg:#111827", Path(json.loads(out)["html"]).read_text())
 
 
 class ReportTests(Base):
@@ -225,6 +237,34 @@ class ReportTests(Base):
         self.store.add("<script>alert(1)</script>")
         _, html, _ = write_report(self.store, self.tmp / "r", self.today)
         self.assertNotIn("<script>alert", html.read_text())
+
+    def _html(self, **kw) -> str:
+        return write_report(self.store, self.tmp / "r", self.today, **kw)[1].read_text()
+
+    def test_themes(self):
+        default = self._html()
+        self.assertIn("prefers-color-scheme:dark", default)
+        self.assertEqual(default.split("<style>")[1].split("</style>")[0],
+                         self._html(theme="auto").split("<style>")[1].split("</style>")[0])
+        self.assertNotIn("prefers-color-scheme", self._html(theme="light"))
+        dark = self._html(theme="dark")
+        self.assertNotIn("prefers-color-scheme", dark)
+        self.assertRegex(dark, r"\n:root\{--bg:#111827;")
+        for theme in ("auto", "light", "dark"):
+            self.assertRegex(self._html(theme=theme), r"@media print\{:root\{--bg:#f4f5f7;[^}]*--fg:#1f2937;")
+
+    def test_invalid_theme_writes_nothing(self):
+        out = self.tmp / "bad"
+        with self.assertRaisesRegex(ValueError, "use auto, light or dark"):
+            write_report(self.store, out, self.today, theme="neon")
+        self.assertFalse(out.exists())
+
+    def test_cli_rejects_invalid_theme(self):
+        with mock.patch.object(cli, "DATA_DIR", self.tmp), mock.patch("sys.stderr"), \
+                self.assertRaises(SystemExit) as cm:
+            cli.main(["report", "--theme", "neon"])
+        self.assertEqual(cm.exception.code, 2)
+        self.assertFalse((self.tmp / "reports").exists())
 
 
 def _msg(stop, *blocks):

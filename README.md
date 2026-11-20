@@ -42,9 +42,12 @@ export ANTHROPIC_API_KEY=sk-ant-...
 ```bash
 taskman              # chat (same as `taskman chat`)
 taskman list [-a]    # print open tasks (-a includes done) — no AI
-taskman report [--week 2026-11-13]   # write/overwrite this week's report — no AI, rule-based notes
+taskman report [--week 2026-11-13] [--theme auto|light|dark]   # write/overwrite this week's report — no AI, rule-based notes
 taskman mcp          # run the MCP server on stdio (Claude Code does this for you)
 ```
+
+`--theme` sets the HTML report's colours: `auto` (the default) follows the system light/dark setting; `light` and
+`dark` force one. Printing always uses the light colours. The chat/MCP report tool takes the same `theme` option.
 
 Things to say in chat:
 

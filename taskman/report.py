@@ -16,6 +16,7 @@ from pathlib import Path
 from .store import DONE, Task, TaskStore, sort_tasks
 
 PRIORITY_LABEL = {"low": "Low", "medium": "Medium", "high": "High", "urgent": "Urgent"}
+THEMES = ("auto", "light", "dark")
 
 
 @dataclass
@@ -140,13 +141,25 @@ def _inline(text: str) -> str:
     return _HIGHLIGHT.sub(r"<mark>\1</mark>", html.escape(text))
 
 
+# HTML palettes as CSS custom properties; dark keeps the light bar colours.
+_LIGHT = ("--bg:#f4f5f7;--card:#fff;--fg:#1f2937;--muted:#6b7280;--line:#e5e7eb;--head:#1e3a5f;\n"
+          "--high-bg:#fff4e5;--high-bar:#f59e0b;--urgent-bg:#fdecec;--urgent-bar:#dc2626;--mark-bg:#fff3b0;--mark-fg:#1f2937")
+_DARK = ("--bg:#111827;--card:#1f2937;--fg:#f3f4f6;--muted:#9ca3af;--line:#374151;\n"
+         "--head:#93c5fd;--high-bg:#3b2a12;--urgent-bg:#3f1d1d;--mark-bg:#5b4a0f;--mark-fg:#fef9c3")
+_THEME_CSS = {
+    "auto": f":root{{{_LIGHT}}}\n@media (prefers-color-scheme:dark){{:root{{{_DARK}}}}}",
+    "light": f":root{{{_LIGHT}}}",
+    "dark": f":root{{{_LIGHT}}}\n:root{{{_DARK}}}",
+}
+
+
 def _html_note(n: Note) -> str:
     tag = '<span class="tag">Resolved</span> ' if n.resolved else ""
     refs = "".join(f' <span class="ref">#{i}</span>' for i in n.task_ids)
     return f'<li{" class=\"resolved\"" if n.resolved else ""}>{tag}{_inline(n.text)}{refs}</li>'
 
 
-def render_html(d: WeekData, notes: list[Note]) -> str:
+def render_html(d: WeekData, notes: list[Note], theme: str = "auto") -> str:
     e = html.escape
     rows = "".join(
         f'<tr class="p-{t.priority} s-{(t.status or 'backlog').lower()}"><td class="num">{t.id}</td><td>{e(t.title)}</td>'
@@ -159,10 +172,7 @@ def render_html(d: WeekData, notes: list[Note]) -> str:
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Weekly Status Report {d.label}</title>
 <style>
-:root{{--bg:#f4f5f7;--card:#fff;--fg:#1f2937;--muted:#6b7280;--line:#e5e7eb;--head:#1e3a5f;
---high-bg:#fff4e5;--high-bar:#f59e0b;--urgent-bg:#fdecec;--urgent-bar:#dc2626;--mark-bg:#fff3b0;--mark-fg:#1f2937}}
-@media (prefers-color-scheme:dark){{:root{{--bg:#111827;--card:#1f2937;--fg:#f3f4f6;--muted:#9ca3af;--line:#374151;
---head:#93c5fd;--high-bg:#3b2a12;--urgent-bg:#3f1d1d;--mark-bg:#5b4a0f;--mark-fg:#fef9c3}}}}
+{_THEME_CSS[theme]}
 body{{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 "Segoe UI",system-ui,sans-serif}}
 main{{max-width:820px;margin:32px auto;padding:32px;background:var(--card);border-radius:8px;
 box-shadow:0 1px 3px rgba(0,0,0,.08)}}
@@ -189,7 +199,7 @@ mark{{background:var(--mark-bg);color:var(--mark-fg);font-weight:600;padding:0 3
 @media print{{mark{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}}}
 footer{{margin-top:32px;font-size:12px;color:var(--muted)}}
 @media (max-width:600px){{main{{margin:0;border-radius:0;padding:20px 16px}}}}
-@media print{{body{{background:#fff}} main{{box-shadow:none;margin:0}}}}
+@media print{{:root{{{_LIGHT}}} body{{background:#fff}} main{{box-shadow:none;margin:0}}}}
 </style></head>
 <body><main>
 <header><h1>Weekly Status Report — {d.label}</h1><p class="period">Reporting period: {d.period}</p></header>
@@ -203,12 +213,14 @@ footer{{margin-top:32px;font-size:12px;color:var(--muted)}}
 
 
 def write_report(store: TaskStore, out_dir: str | Path, week_of: date | None = None, summary: str | None = None,
-                 highlights: dict[int, list[str]] | None = None) -> tuple[Path, Path, bool]:
+                 highlights: dict[int, list[str]] | None = None, theme: str = "auto") -> tuple[Path, Path, bool]:
     """Write week-YYYY-Www.{md,html}; a report for the same week is overwritten.
 
     Executive Notes = one summary bullet (Claude's, or rule-based) + the notes of open tasks.
     Returns (md_path, html_path, replaced_existing).
     """
+    if theme not in THEMES:
+        raise ValueError(f"Unknown theme {theme!r}; use auto, light or dark.")
     d = collect(store, week_of or date.today())
     notes = [Note((summary or "").strip() or default_summary(d)), *task_notes(d, highlights)]
     out = Path(out_dir)
@@ -216,5 +228,5 @@ def write_report(store: TaskStore, out_dir: str | Path, week_of: date | None = N
     md_path, html_path = out / f"week-{d.label}.md", out / f"week-{d.label}.html"
     replaced = md_path.exists() or html_path.exists()
     md_path.write_text(render_markdown(d, notes), encoding="utf-8")
-    html_path.write_text(render_html(d, notes), encoding="utf-8")
+    html_path.write_text(render_html(d, notes, theme), encoding="utf-8")
     return md_path, html_path, replaced
