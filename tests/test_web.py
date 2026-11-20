@@ -72,6 +72,18 @@ class WebServerTests(unittest.TestCase):
         status, _ = self.request("GET", "/", host=f"localhost:{self.port}", origin=f"http://localhost:{self.port}")
         self.assertEqual(status, 200)
 
+    def test_framing_and_body_limit(self):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=30)
+        conn.request("GET", "/")
+        r = conn.getresponse()
+        page = r.read().decode()
+        conn.close()
+        self.assertEqual(r.getheader("Content-Security-Policy"), "frame-ancestors 'self'")
+        self.assertIn('sandbox=""', page)
+        big = {"week": "2026-W47", "pad": "x" * (web.MAX_BODY + 1)}
+        self.assertEqual(self.request("POST", "/api/regenerate", big)[0], 400)
+        self.assertEqual(self.reports(), [])
+
     def test_bad_host_and_origin(self):
         self.assertEqual(self.request("GET", "/", host="evil.example")[0], 403)
         self.assertEqual(self.request("GET", "/api/reports", host=f"evil.example:{self.port}")[0], 403)

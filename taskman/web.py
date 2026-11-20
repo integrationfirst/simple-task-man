@@ -34,6 +34,7 @@ HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 CLAUDE_TIMEOUT = 300  # seconds
 MAX_INSTRUCTION = 2000
+MAX_BODY = 64 * 1024  # bytes
 ERROR_TAIL = 2000
 WEEK_RE = re.compile(r"^\d{4}-W\d{2}$")
 REPORT_PATH_RE = re.compile(r"^/reports/([^/]+)\.html$")
@@ -110,6 +111,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Security-Policy", "frame-ancestors 'self'")
         self.end_headers()
         self.wfile.write(body)
 
@@ -165,7 +167,10 @@ class Handler(BaseHTTPRequestHandler):
     # ---- actions -------------------------------------------------------------
     def _read_json(self) -> dict:
         try:
-            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+            length = int(self.headers.get("Content-Length") or 0)
+            if not 0 <= length <= MAX_BODY:
+                raise HTTPError(400, "Request body is too large.")
+            body = json.loads(self.rfile.read(length) or b"{}")
         except ValueError:
             raise HTTPError(400, "Body must be JSON.") from None
         if not isinstance(body, dict):
@@ -235,8 +240,8 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>taskman reports</title>
 <style>
-:root{color-scheme:light dark;--fg:#1f2328;--muted:#59636e;--bg:#fff;--line:#d1d9e0;--err:#b42318;--acc:#0969da}
-@media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--muted:#9198a1;--bg:#0d1117;--line:#3d444d;--err:#ff7b72;--acc:#4493f8}}
+:root{color-scheme:light dark;--fg:#1f2937;--muted:#6b7280;--bg:#f4f5f7;--line:#e5e7eb;--err:#b42318;--acc:#1e3a5f}
+@media (prefers-color-scheme:dark){:root{--fg:#f3f4f6;--muted:#9ca3af;--bg:#111827;--line:#374151;--err:#ff7b72;--acc:#93c5fd}}
 *{box-sizing:border-box}
 body{margin:0;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--fg);background:var(--bg);
   display:flex;flex-direction:column;height:100vh}
@@ -245,6 +250,7 @@ header h1{font-size:1.05rem;margin:0 1rem 0 0}
 select,button,textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.35rem .6rem}
 button{cursor:pointer}
 button:disabled,textarea:disabled{opacity:.55;cursor:default}
+:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
 main{flex:1;display:flex;min-height:0}
 #view{flex:1;display:flex;min-width:0}
 iframe{flex:1;border:0;width:100%}
@@ -256,6 +262,12 @@ textarea{width:100%;min-height:8rem;resize:vertical}
 #error{color:var(--err);white-space:pre-wrap}
 #output{white-space:pre-wrap;border-top:1px solid var(--line);padding-top:.5rem}
 [hidden]{display:none!important}
+@media (max-width:600px){
+  main{flex-direction:column}
+  #view{flex:none}
+  iframe{min-height:60vh}
+  aside{width:auto;max-width:none;border-left:0;border-top:1px solid var(--line);overflow:visible}
+}
 </style></head>
 <body>
 <header>
@@ -265,13 +277,13 @@ textarea{width:100%;min-height:8rem;resize:vertical}
 </header>
 <main>
   <div id="view">
-    <iframe id="frame" title="Weekly report" hidden></iframe>
+    <iframe id="frame" title="Weekly report" sandbox="" hidden></iframe>
     <div id="empty" hidden><p id="empty-text"></p><button id="gen" type="button">Generate report</button></div>
   </div>
   <aside>
     <h2>Ask Claude</h2>
     <form id="ask">
-      <textarea id="instruction" maxlength="2000" placeholder="e.g. make the summary mention the vendor delay"></textarea>
+      <textarea id="instruction" aria-label="Instruction for Claude" maxlength="2000" placeholder="e.g. make the summary mention the vendor delay"></textarea>
       <button id="send" type="submit">Ask Claude</button>
     </form>
     <div id="status" role="status" hidden></div>
