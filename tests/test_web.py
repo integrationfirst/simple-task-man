@@ -1,6 +1,7 @@
 import http.client
 import json
 import os
+import re
 import stat
 import tempfile
 import threading
@@ -215,6 +216,46 @@ class WeekParsingTests(unittest.TestCase):
         for bad in ("2026-W60", "2026-W00", "../x", "2026-47", None, 5):
             with self.assertRaises(web.HTTPError):
                 web.parse_week(bad)
+
+
+def contrast(a: str, b: str) -> float:
+    """WCAG 2.x contrast ratio of two #rrggbb colours."""
+    def lum(h):
+        c = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        r, g, b = (x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c)
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    hi, lo = sorted((lum(a), lum(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+class PaletteTests(unittest.TestCase):
+    NEW_VARS = ("head-bg", "acc-fg", "acc-hover", "acc-active", "panel", "info", "err-bg", "ok-bg")
+    PAIRS = [("fg", "head-bg"), ("acc-fg", "acc"), ("acc-fg", "acc-hover"), ("acc-fg", "acc-active"),
+             ("fg", "panel"), ("info", "panel"), ("err", "err-bg"), ("fg", "ok-bg"), ("fg", "bg")]
+
+    def setUp(self):
+        style = web.PAGE.split("<style>", 1)[1].split("</style>", 1)[0]
+        self.style = style
+        light = re.search(r"^:root\{(.*?)\}", style, re.S | re.M).group(1)
+        dark = re.search(r"@media \(prefers-color-scheme:dark\)\{:root\{(.*?)\}\}", style, re.S).group(1)
+        self.modes = {name: dict(re.findall(r"--([\w-]+):\s*([^;]+?)\s*(?:;|$)", block))
+                      for name, block in (("light", light), ("dark", dark))}
+
+    def test_new_variables_defined_in_both_modes(self):
+        for mode, palette in self.modes.items():
+            for var in self.NEW_VARS:
+                with self.subTest(mode=mode, var=var):
+                    self.assertRegex(palette.get(var, ""), r"^#[0-9a-fA-F]{6}$")
+
+    def test_contrast(self):
+        for mode, palette in self.modes.items():
+            for fg, bg in self.PAIRS:
+                with self.subTest(mode=mode, pair=(fg, bg)):
+                    self.assertGreaterEqual(contrast(palette[fg], palette[bg]), 4.5)
+
+    def test_button_fills(self):
+        self.assertRegex(self.style, r"#send,#gen\{background:var\(--acc\)")
+        self.assertNotRegex(self.style, r"#regen[^{]*\{[^}]*background:var\(--acc\)")
 
 
 if __name__ == "__main__":
