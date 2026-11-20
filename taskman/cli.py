@@ -1,4 +1,4 @@
-"""Terminal entry point: `python -m taskman [chat|list|report]`."""
+"""Terminal entry point: `python -m taskman [chat|list|report|mcp|serve]`."""
 
 from __future__ import annotations
 
@@ -96,6 +96,12 @@ def cmd_mcp(_args) -> int:
     return 0
 
 
+def cmd_serve(args) -> int:
+    from .web import serve
+
+    return serve(DATA_DIR, args.port)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="taskman", description="Personal task manager with a Claude agent.")
     sub = p.add_subparsers(dest="cmd")
@@ -109,5 +115,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="HTML colour theme: auto (follow the system setting, default), light or dark.")
     rp.set_defaults(func=cmd_report)
     sub.add_parser("mcp", help="Run as an MCP server over stdio (for Claude Code).").set_defaults(func=cmd_mcp)
+    sp = sub.add_parser("serve", help="Serve the local report UI on http://127.0.0.1 only.")
+    sp.add_argument("--port", type=int, default=8765, help="Port to listen on (default: 8765; 0 picks a free one).")
+    sp.set_defaults(func=cmd_serve)
     args = p.parse_args(argv)
     return getattr(args, "func", cmd_chat)(args)
