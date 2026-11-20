@@ -251,6 +251,7 @@ header{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;padding:.75rem 
 header h1{font-size:1.05rem;margin:0 1rem 0 0}
 select,button,textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.35rem .6rem}
 button{cursor:pointer}
+header select,header button{border-color:var(--muted)}
 button:disabled,textarea:disabled{opacity:.55;cursor:default}
 :focus-visible{outline:2px solid var(--acc);outline-offset:1px}
 #send,#gen{background:var(--acc);color:var(--acc-fg);border-color:var(--acc)}
